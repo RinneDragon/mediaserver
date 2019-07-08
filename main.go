@@ -1,11 +1,11 @@
 package main
 
 import (
+	"acif-mediaserver/controllers"
 	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"media-server/controllers"
 )
 
 func main() {

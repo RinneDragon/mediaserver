@@ -1,11 +1,11 @@
 package adapters
 
 import (
+	"acif-mediaserver/schemas"
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"math/rand"
-	"media-server/schemas"
 )
 
 const (

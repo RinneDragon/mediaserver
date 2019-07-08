@@ -1,9 +1,9 @@
 package services
 
 import (
+	"acif-mediaserver/adapters"
+	"acif-mediaserver/schemas"
 	"github.com/gorilla/websocket"
-	"media-server/adapters"
-	"media-server/schemas"
 )
 
 type MediaService struct {

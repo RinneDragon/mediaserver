@@ -1,12 +1,12 @@
 package controllers
 
 import (
+	"acif-mediaserver/adapters"
+	"acif-mediaserver/schemas"
+	"acif-mediaserver/services"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo"
-	"media-server/adapters"
-	"media-server/schemas"
-	"media-server/services"
 	"net/http"
 	"os"
 )
