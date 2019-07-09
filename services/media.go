@@ -14,7 +14,7 @@ var CandidatesQueue = make(map[string][]interface{})
 var Users = make(map[string]*schemas.UserSession)
 var WebRtc = make(map[string]string)
 
-func (ms *MediaService) CreatePipeline(caller, callee string) (mediaPipelineId, sessionId, callerWebRtc, calleeWebRtc, recorderId *string, err error) {
+func (ms *MediaService) CreatePipeline(caller, callee, userSession string) (mediaPipelineId, sessionId, callerWebRtc, calleeWebRtc, recorderId *string, err error) {
 	mediaPipelineId, sessionId, err = ms.Adapter.CreateMediaPipeline()
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
@@ -34,10 +34,12 @@ func (ms *MediaService) CreatePipeline(caller, callee string) (mediaPipelineId, 
 		}
 	}
 
-	recorderId, err = ms.Adapter.CreateRecorder(*mediaPipelineId, *sessionId)
+	var uri = new(string)
+	recorderId, uri, err = ms.Adapter.CreateRecorder(*mediaPipelineId, *sessionId, userSession)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
+	Users[caller].RecordPath = *uri
 
 	calleeWebRtc, err = ms.Adapter.CreateWebRtcEndpoint(*mediaPipelineId, *sessionId)
 	if err != nil {

@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"math/rand"
+	"time"
 )
 
 const (
-	RECORDING_PATH = "file:///tmp/record-%v.webm"
+	RECORDING_PATH = "file:///tmp/record-%v-%v.webm"
 )
 
 type KurentoMediaServer struct {
@@ -292,8 +293,11 @@ func (kms *KurentoMediaServer) CreateOffer(webRtcEndpointId, sessionId, SDP stri
 	return &response.Result.Value, nil
 }
 
-func (kms *KurentoMediaServer) CreateRecorder(mediaPipelineId, sessionId string) (recorderEndpoint *string, err error) {
+func (kms *KurentoMediaServer) CreateRecorder(mediaPipelineId, kurentoSessionId, usersSessionId string) (recorderEndpoint, uri *string, err error) {
 	var id = rand.Int()
+	uri = new(string)
+	*uri = fmt.Sprintf(RECORDING_PATH, usersSessionId, time.Now().Unix())
+
 	err = kms.Ws.WriteJSON(schemas.Request{
 		Id:     id,
 		Method: "create",
@@ -309,27 +313,27 @@ func (kms *KurentoMediaServer) CreateRecorder(mediaPipelineId, sessionId string)
 				URI           string `json:"uri"`
 			}{
 				MediaPipeline: mediaPipelineId,
-				URI:           fmt.Sprintf(RECORDING_PATH, id),
+				URI: *uri,
 			},
 			Properties: nil,
-			SessionId:  sessionId,
+			SessionId:  kurentoSessionId,
 		},
 		Jsonrpc: "2.0",
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var response schemas.Response
 	err = kms.Ws.ReadJSON(&response)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if response.Error != nil {
-		return nil, errors.New(fmt.Sprintf("%s: %s", response.Error.Message, response.Error.Data))
+		return nil, nil, errors.New(fmt.Sprintf("%s: %s", response.Error.Message, response.Error.Data))
 	}
 
-	return &response.Result.Value, nil
+	return &response.Result.Value, uri, nil
 }
 
 func (kms *KurentoMediaServer) StartRecording(recordEndpointId, webRtcEndpointId, sessionId string) (err error) {

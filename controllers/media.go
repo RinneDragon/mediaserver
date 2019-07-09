@@ -49,6 +49,7 @@ func Call(c echo.Context) error {
 		case "register":
 			ms.Register(message.Name, conn)
 		case "call":
+			//инициирует сеанс связи только оператор
 			err = ms.Call(message.To, message.From, message.SdpOffer)
 			if err != nil {
 				c.Logger().Error(err)
@@ -61,7 +62,14 @@ func Call(c echo.Context) error {
 				return err
 			}
 		case "stop":
+			//инициализирует остановку сессии только оператор
 			err = ms.Stop(message.Name)
+			if err != nil {
+				c.Logger().Error(err)
+				return err
+			}
+			//отправляем запрос на привязку к данным сессии ссылки на видеозапись
+			err = adapters.BindVideoLinkToSession(message.SessionId, services.Users[services.Users[message.Name].Peer].RecordPath)
 			if err != nil {
 				c.Logger().Error(err)
 				return err

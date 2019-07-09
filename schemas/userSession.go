@@ -5,6 +5,7 @@ import "github.com/gorilla/websocket"
 type UserSession struct {
 	MediaPipelineId string
 	SessionId       string
+	RecordPath      string
 	SdpOffer        string
 	Peer            string
 	Ws              *websocket.Conn
@@ -18,6 +19,7 @@ type Message struct {
 	Candidate    interface{} `json:"candidate"`
 	Name         string      `json:"name"`
 	CallResponse string      `json:"callResponse"`
+	SessionId    string      `json:"sessionId"`
 }
 
 func (u *UserSession) SendMessage(message interface{}) (err error) {
