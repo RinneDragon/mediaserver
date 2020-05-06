@@ -13,6 +13,8 @@ import (
 
 func Call(c echo.Context) error {
 	dialer := websocket.DefaultDialer
+	kurento := os.Getenv("KURENTO_HOST")
+	print(kurento)
 	ws, response, err := dialer.Dial(os.Getenv("KURENTO_HOST"), nil)
 	if err != nil {
 		fmt.Println(response, err)
@@ -23,6 +25,13 @@ func Call(c echo.Context) error {
 			Ws: ws,
 		},
 	}
+
+	/*if response, err := ms.Adapter.Ping(); err != nil {
+		c.Logger().Error(err)
+		return err
+	} else {
+		print(response)
+	}*/
 
 	var upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
@@ -47,9 +56,11 @@ func Call(c echo.Context) error {
 
 		switch message.Id {
 		case "register":
-			ms.Register(message.Name, conn)
+			if err := ms.Register(message.Name, conn); err != nil {
+				c.Logger().Error(err)
+				return err
+			}
 		case "call":
-			//инициирует сеанс связи только оператор
 			err = ms.Call(message.To, message.From, message.SdpOffer)
 			if err != nil {
 				c.Logger().Error(err)
@@ -62,18 +73,17 @@ func Call(c echo.Context) error {
 				return err
 			}
 		case "stop":
-			//инициализирует остановку сессии только оператор
 			err = ms.Stop(message.Name)
 			if err != nil {
 				c.Logger().Error(err)
 				return err
 			}
-			//отправляем запрос на привязку к данным сессии ссылки на видеозапись
+			/*//отправляем запрос на привязку к данным сессии ссылки на видеозапись
 			err = adapters.BindVideoLinkToSession(message.SessionId, services.Users[services.Users[message.Name].Peer].RecordPath)
 			if err != nil {
 				c.Logger().Error(err)
 				return err
-			}
+			}*/
 		case "onIceCandidate":
 			err = ms.OnIceCandidate(message.From, message.Candidate)
 			if err != nil {
@@ -85,4 +95,3 @@ func Call(c echo.Context) error {
 		}
 	}
 }
-

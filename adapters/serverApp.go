@@ -1,13 +1,6 @@
 package adapters
 
-import (
-	"errors"
-	"fmt"
-	"net/http"
-	"os"
-)
-
-func BindVideoLinkToSession(sessionId, filename string) error {
+/*func BindVideoLinkToSession(sessionId, filename string) error {
 	client := http.Client{}
 	req, _ := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/bind/%s/media?link=%s", os.Getenv("SERVERAPP_HOST"), sessionId, filename), nil)
@@ -18,3 +11,4 @@ func BindVideoLinkToSession(sessionId, filename string) error {
 
 	return nil
 }
+*/

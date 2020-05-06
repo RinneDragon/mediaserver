@@ -22,6 +22,11 @@ type Message struct {
 	SessionId    string      `json:"sessionId"`
 }
 
+type ResponseToClient struct {
+	Id       string `json:"id"`
+	Response string `json:"response"`
+}
+
 func (u *UserSession) SendMessage(message interface{}) (err error) {
 	err = u.Ws.WriteJSON(message)
 	return

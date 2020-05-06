@@ -34,13 +34,13 @@ func (ms *MediaService) CreatePipeline(caller, callee, userSession string) (medi
 		}
 	}
 
-	var uri = new(string)
-	recorderId, uri, err = ms.Adapter.CreateRecorder(*mediaPipelineId, *sessionId, userSession)
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
-	}
-	Users[caller].RecordPath = *uri
-
+	/*	var uri = new(string)
+		recorderId, uri, err = ms.Adapter.CreateRecorder(*mediaPipelineId, *sessionId, userSession)
+		if err != nil {
+			return nil, nil, nil, nil, nil, err
+		}
+		Users[caller].RecordPath = *uri
+	*/
 	calleeWebRtc, err = ms.Adapter.CreateWebRtcEndpoint(*mediaPipelineId, *sessionId)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
@@ -63,10 +63,10 @@ func (ms *MediaService) CreatePipeline(caller, callee, userSession string) (medi
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
-	err = ms.Adapter.Connect(*callerWebRtc, *recorderId, *sessionId)
+	/*err = ms.Adapter.Connect(*callerWebRtc, *recorderId, *sessionId)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
-	}
+	}*/
 
 	return
 }
@@ -77,7 +77,7 @@ func (ms *MediaService) Stop(name string) error {
 		Id      string `json:"id"`
 		Message string `json:"message"`
 	}{
-		Id: "stopCommunication",
+		Id:      "stopCommunication",
 		Message: "remote user hanged out",
 	})
 	if err != nil {
@@ -95,7 +95,7 @@ func (ms *MediaService) IncomingCallResponse(from, to, callResponse, calleeSdp s
 	caller := Users[from]
 	callee := Users[to]
 	if callResponse == "accept" {
-		mediaPipelineId, sessionId, callerWebRtc, calleeWebRtc, recorderId, err := ms.CreatePipeline(from, to)
+		mediaPipelineId, sessionId, callerWebRtc, calleeWebRtc, _, err := ms.CreatePipeline(from, to, Users[to].SessionId)
 		if err != nil {
 			return err
 		}
@@ -104,21 +104,21 @@ func (ms *MediaService) IncomingCallResponse(from, to, callResponse, calleeSdp s
 		callerAnswer, err := ms.Adapter.GenerateSdpAnswer(*callerWebRtc, *sessionId, caller.SdpOffer)
 		calleeAnswer, err := ms.Adapter.GenerateSdpAnswer(*calleeWebRtc, *sessionId, callee.SdpOffer)
 
-		err = ms.Adapter.StartRecording(*recorderId, *callerWebRtc, *sessionId)
+		/*err = ms.Adapter.StartRecording(*recorderId, *callerWebRtc, *sessionId)
 		if err != nil {
 			return err
-		}
+		}*/
 
 		Users[from].MediaPipelineId = *mediaPipelineId
 		Users[from].SessionId = *sessionId
 		Users[to].MediaPipelineId = *mediaPipelineId
 		Users[to].SessionId = *sessionId
 
-		var messageCallee = struct{
-			Id string `json:"id"`
+		var messageCallee = struct {
+			Id        string `json:"id"`
 			SdpAnswer string `json:"sdpAnswer"`
 		}{
-			Id: "startCommunication",
+			Id:        "startCommunication",
 			SdpAnswer: *calleeAnswer,
 		}
 		err = callee.SendMessage(messageCallee)
@@ -126,13 +126,13 @@ func (ms *MediaService) IncomingCallResponse(from, to, callResponse, calleeSdp s
 			return err
 		}
 
-		var messageCaller = struct{
-			Id string `json:"id"`
-			Response string `json:"response"`
+		var messageCaller = struct {
+			Id        string `json:"id"`
+			Response  string `json:"response"`
 			SdpAnswer string `json:"sdpAnswer"`
 		}{
-			Id: "callResponse",
-			Response : "accepted",
+			Id:        "callResponse",
+			Response:  "accepted",
 			SdpAnswer: *callerAnswer,
 		}
 		err = caller.SendMessage(messageCaller)
@@ -149,24 +149,33 @@ func (ms *MediaService) Call(to, from, sdpOffer string) error {
 	Users[from].SdpOffer = sdpOffer
 	Users[to].Peer = from
 	Users[from].Peer = to
-	var message = struct{
-		Id string `json:"id"`
+	var message = struct {
+		Id   string `json:"id"`
 		From string `json:"from"`
+		To   string `json:"to"`
 	}{
-		Id: "incomingCall",
+		Id:   "incomingCall",
 		From: from,
+		To:   to,
 	}
 	err := Users[to].SendMessage(message)
 	return err
 }
 
-func (ms *MediaService) Register(name string, ws *websocket.Conn) {
+func (ms *MediaService) Register(name string, ws *websocket.Conn) error {
 	Users[name] = new(schemas.UserSession)
 	Users[name].Ws = ws
+	if err := Users[name].SendMessage(schemas.ResponseToClient{
+		Id:       "registerResponse",
+		Response: "accepted",
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (ms *MediaService) OnIceCandidate(name string, candidate interface{}) error {
-	if  WebRtc, ok := WebRtc[name]; ok {
+	if WebRtc, ok := WebRtc[name]; ok {
 		err := ms.Adapter.AddIceCandidate(WebRtc, Users[name].SessionId, candidate)
 		if err != nil {
 			return err

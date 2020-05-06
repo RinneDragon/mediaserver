@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"math/rand"
-	"time"
 )
 
 const (
@@ -15,6 +14,33 @@ const (
 
 type KurentoMediaServer struct {
 	Ws *websocket.Conn
+}
+
+func (kms *KurentoMediaServer) Ping() (*string, error) {
+	var id = rand.Int()
+	if err := kms.Ws.WriteJSON(schemas.Request{
+		Id:     id,
+		Method: "ping",
+		Params: struct {
+			Interval interface{} `json:"interval"`
+		}{
+			Interval: 240000,
+		},
+		Jsonrpc: "2.0",
+	}); err != nil {
+		return nil, err
+	}
+
+	var response schemas.Response
+	if err := kms.Ws.ReadJSON(&response); err != nil {
+		return nil, err
+	}
+
+	if response.Error != nil {
+		return nil, errors.New(fmt.Sprintf("%s: %s", response.Error.Message, response.Error.Data))
+	}
+
+	return &response.Result.Value, nil
 }
 
 func (kms *KurentoMediaServer) GenerateSdpAnswer(webRtcEndpointId, sessionId, sdpOffer string) (*string, error) {
@@ -293,7 +319,7 @@ func (kms *KurentoMediaServer) CreateOffer(webRtcEndpointId, sessionId, SDP stri
 	return &response.Result.Value, nil
 }
 
-func (kms *KurentoMediaServer) CreateRecorder(mediaPipelineId, kurentoSessionId, usersSessionId string) (recorderEndpoint, uri *string, err error) {
+/*func (kms *KurentoMediaServer) CreateRecorder(mediaPipelineId, kurentoSessionId, usersSessionId string) (recorderEndpoint, uri *string, err error) {
 	var id = rand.Int()
 	uri = new(string)
 	*uri = fmt.Sprintf(RECORDING_PATH, usersSessionId, time.Now().Unix())
@@ -376,3 +402,4 @@ func (kms *KurentoMediaServer) StartRecording(recordEndpointId, webRtcEndpointId
 
 	return nil
 }
+*/
