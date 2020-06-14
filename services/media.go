@@ -34,13 +34,13 @@ func (ms *MediaService) CreatePipeline(caller, callee, userSession string) (medi
 		}
 	}
 
-	/*	var uri = new(string)
-		recorderId, uri, err = ms.Adapter.CreateRecorder(*mediaPipelineId, *sessionId, userSession)
-		if err != nil {
-			return nil, nil, nil, nil, nil, err
-		}
-		Users[caller].RecordPath = *uri
-	*/
+	var uri = new(string)
+	recorderId, uri, err = ms.Adapter.CreateRecorder(*mediaPipelineId, *sessionId, userSession)
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
+	}
+	Users[callee].RecordPath = *uri
+
 	calleeWebRtc, err = ms.Adapter.CreateWebRtcEndpoint(*mediaPipelineId, *sessionId)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
@@ -63,15 +63,15 @@ func (ms *MediaService) CreatePipeline(caller, callee, userSession string) (medi
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
-	/*err = ms.Adapter.Connect(*callerWebRtc, *recorderId, *sessionId)
+	err = ms.Adapter.Connect(*calleeWebRtc, *recorderId, *sessionId)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
-	}*/
+	}
 
 	return
 }
 
-func (ms *MediaService) Stop(name string) error {
+func (ms *MediaService) Stop(name string) (*string, error) {
 	to := Users[name].Peer
 	err := Users[to].SendMessage(struct {
 		Id      string `json:"id"`
@@ -81,13 +81,26 @@ func (ms *MediaService) Stop(name string) error {
 		Message: "remote user hanged out",
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = ms.Adapter.Release(Users[name].MediaPipelineId, Users[name].SessionId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	Users[name].IsBusy = false
+	Users[to].IsBusy = false
+	delete(CandidatesQueue, name)
+	delete(CandidatesQueue, to)
+	delete(WebRtc, name)
+	delete(WebRtc, to)
+
+	var admin string
+	if Users[to].Role == "admin" {
+		admin = to
+	} else {
+		admin = name
+	}
+	return &admin, nil
 }
 
 func (ms *MediaService) IncomingCallResponse(from, to, callResponse, calleeSdp string) error {
@@ -95,7 +108,7 @@ func (ms *MediaService) IncomingCallResponse(from, to, callResponse, calleeSdp s
 	caller := Users[from]
 	callee := Users[to]
 	if callResponse == "accept" {
-		mediaPipelineId, sessionId, callerWebRtc, calleeWebRtc, _, err := ms.CreatePipeline(from, to, Users[to].SessionId)
+		mediaPipelineId, sessionId, callerWebRtc, calleeWebRtc, recorderId, err := ms.CreatePipeline(from, to, Users[to].SessionId)
 		if err != nil {
 			return err
 		}
@@ -104,10 +117,10 @@ func (ms *MediaService) IncomingCallResponse(from, to, callResponse, calleeSdp s
 		callerAnswer, err := ms.Adapter.GenerateSdpAnswer(*callerWebRtc, *sessionId, caller.SdpOffer)
 		calleeAnswer, err := ms.Adapter.GenerateSdpAnswer(*calleeWebRtc, *sessionId, callee.SdpOffer)
 
-		/*err = ms.Adapter.StartRecording(*recorderId, *callerWebRtc, *sessionId)
+		err = ms.Adapter.StartRecording(*recorderId, *calleeWebRtc, *sessionId)
 		if err != nil {
 			return err
-		}*/
+		}
 
 		Users[from].MediaPipelineId = *mediaPipelineId
 		Users[from].SessionId = *sessionId
@@ -143,9 +156,26 @@ func (ms *MediaService) IncomingCallResponse(from, to, callResponse, calleeSdp s
 	return nil
 }
 
-func (ms *MediaService) Call(to, from, sdpOffer string) error {
-	delete(CandidatesQueue, from)
+func (ms *MediaService) Call(from, sdpOffer string) error {
+	//delete(CandidatesQueue, from)
+	var to = ""
+	for id, userSessionData := range Users {
+		if userSessionData.Role == "admin" && !userSessionData.IsBusy {
+			to = id
+		}
+	}
 
+	if to == "" {
+		err := Users[from].SendMessage(struct {
+			Id string `json:"id"`
+		}{
+			Id: "allAdminsAreBusy",
+		})
+		return err
+	}
+
+	Users[to].IsBusy = true
+	Users[from].IsBusy = true
 	Users[from].SdpOffer = sdpOffer
 	Users[to].Peer = from
 	Users[from].Peer = to
@@ -162,8 +192,9 @@ func (ms *MediaService) Call(to, from, sdpOffer string) error {
 	return err
 }
 
-func (ms *MediaService) Register(name string, ws *websocket.Conn) error {
+func (ms *MediaService) Register(name string, role string, ws *websocket.Conn) error {
 	Users[name] = new(schemas.UserSession)
+	Users[name].Role = role
 	Users[name].Ws = ws
 	if err := Users[name].SendMessage(schemas.ResponseToClient{
 		Id:       "registerResponse",

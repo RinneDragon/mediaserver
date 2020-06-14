@@ -13,8 +13,6 @@ import (
 
 func Call(c echo.Context) error {
 	dialer := websocket.DefaultDialer
-	kurento := os.Getenv("KURENTO_HOST")
-	print(kurento)
 	ws, response, err := dialer.Dial(os.Getenv("KURENTO_HOST"), nil)
 	if err != nil {
 		fmt.Println(response, err)
@@ -26,12 +24,12 @@ func Call(c echo.Context) error {
 		},
 	}
 
-	/*if response, err := ms.Adapter.Ping(); err != nil {
+	if response, err := ms.Adapter.Ping(); err != nil {
 		c.Logger().Error(err)
 		return err
 	} else {
 		print(response)
-	}*/
+	}
 
 	var upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
@@ -45,6 +43,7 @@ func Call(c echo.Context) error {
 		return err
 	}
 	defer conn.Close()
+	print("peer: " + conn.RemoteAddr().String())
 
 	for {
 		var message schemas.Message
@@ -56,12 +55,12 @@ func Call(c echo.Context) error {
 
 		switch message.Id {
 		case "register":
-			if err := ms.Register(message.Name, conn); err != nil {
+			if err := ms.Register(message.Name, message.Role, conn); err != nil {
 				c.Logger().Error(err)
 				return err
 			}
 		case "call":
-			err = ms.Call(message.To, message.From, message.SdpOffer)
+			err = ms.Call(message.From, message.SdpOffer)
 			if err != nil {
 				c.Logger().Error(err)
 				return err
@@ -73,13 +72,13 @@ func Call(c echo.Context) error {
 				return err
 			}
 		case "stop":
-			err = ms.Stop(message.Name)
+			_, err := ms.Stop(message.Name)
 			if err != nil {
 				c.Logger().Error(err)
 				return err
 			}
-			/*//отправляем запрос на привязку к данным сессии ссылки на видеозапись
-			err = adapters.BindVideoLinkToSession(message.SessionId, services.Users[services.Users[message.Name].Peer].RecordPath)
+			//отправляем запрос на привязку к данным сессии ссылки на видеозапись
+			/*err = adapters.SaveVideoLink(services.Users[*admin].Peer, *admin, services.Users[*admin].RecordPath)
 			if err != nil {
 				c.Logger().Error(err)
 				return err

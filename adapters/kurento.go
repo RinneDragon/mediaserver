@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"math/rand"
-)
-
-const (
-	RECORDING_PATH = "file:///tmp/record-%v-%v.webm"
+	"os"
+	"time"
 )
 
 type KurentoMediaServer struct {
@@ -319,10 +317,10 @@ func (kms *KurentoMediaServer) CreateOffer(webRtcEndpointId, sessionId, SDP stri
 	return &response.Result.Value, nil
 }
 
-/*func (kms *KurentoMediaServer) CreateRecorder(mediaPipelineId, kurentoSessionId, usersSessionId string) (recorderEndpoint, uri *string, err error) {
+func (kms *KurentoMediaServer) CreateRecorder(mediaPipelineId, kurentoSessionId, usersSessionId string) (recorderEndpoint, uri *string, err error) {
 	var id = rand.Int()
 	uri = new(string)
-	*uri = fmt.Sprintf(RECORDING_PATH, usersSessionId, time.Now().Unix())
+	*uri = fmt.Sprintf(os.Getenv("RECORDING_PATH"), usersSessionId, time.Now().Unix())
 
 	err = kms.Ws.WriteJSON(schemas.Request{
 		Id:     id,
@@ -339,7 +337,7 @@ func (kms *KurentoMediaServer) CreateOffer(webRtcEndpointId, sessionId, SDP stri
 				URI           string `json:"uri"`
 			}{
 				MediaPipeline: mediaPipelineId,
-				URI: *uri,
+				URI:           *uri,
 			},
 			Properties: nil,
 			SessionId:  kurentoSessionId,
@@ -402,4 +400,3 @@ func (kms *KurentoMediaServer) StartRecording(recordEndpointId, webRtcEndpointId
 
 	return nil
 }
-*/

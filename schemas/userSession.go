@@ -8,6 +8,8 @@ type UserSession struct {
 	RecordPath      string
 	SdpOffer        string
 	Peer            string
+	Role            string
+	IsBusy          bool
 	Ws              *websocket.Conn
 }
 
@@ -15,6 +17,7 @@ type Message struct {
 	Id           string      `json:"id"`
 	From         string      `json:"from"`
 	To           string      `json:"to"`
+	Role         string      `json:"role"`
 	SdpOffer     string      `json:"sdpOffer"`
 	Candidate    interface{} `json:"candidate"`
 	Name         string      `json:"name"`
